@@ -4,3 +4,6 @@ Flask-WTF==1.1.1
 WTForms==3.0.1
 Werkzeug==2.3.7
 gunicorn
+Flask
+flask_sqlalchemy
+psycopg2-binary
