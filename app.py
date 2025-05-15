@@ -3,16 +3,18 @@ from models import db, Saldo, Venta, Gasto, Transferencia
 from forms import VentaForm, GastoForm, TransferForm, InicialForm
 from datetime import datetime
 import os
-from flask_sqlalchemy import SQLAlchemy
+
+basedir = os.path.abspath(os.path.dirname(__file__))
+db_path = os.path.join(basedir, 'data', 'cevicheria.db')
+os.makedirs(os.path.join(basedir, 'data'), exist_ok=True)
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv("DATABASE_URL")
+app.config['SECRET_KEY'] = 'cambia-esta-clave'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////data/cevicheria.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-# Añadir una clave secreta para los formularios
-db = SQLAlchemy(app)
+
 db.init_app(app)
 
-# -------- Inicializa saldos si no existen --------
 def init_db():
     db.create_all()
     for metodo in ['Efectivo', 'Yape', 'Izipay']:
@@ -24,7 +26,6 @@ def init_db():
             ))
     db.session.commit()
 
-# -------- Utilidades --------
 def obtener_saldos():
     return Saldo.query.all()
 
@@ -33,8 +34,6 @@ def obtener_ventas():
 
 def obtener_gastos():
     return Gasto.query.order_by(Gasto.fecha.desc()).all()
-
-# -------- Rutas --------
 
 @app.route('/init', methods=['GET','POST'])
 def inicial():
@@ -163,7 +162,7 @@ def editar_venta(venta_id):
 
     if form.validate_on_submit():
         saldo_old = Saldo.query.filter_by(metodo_pago=venta.metodo_pago).first()
-        saldo_old.saldo -= venta.monto
+        saldo_old.saldo -= venta.monto  # revertimos saldo anterior
 
         venta.fecha = form.fecha.data
         venta.monto = form.monto.data
@@ -186,7 +185,7 @@ def editar_venta(venta_id):
 def eliminar_venta(venta_id):
     venta = Venta.query.get_or_404(venta_id)
     saldo = Saldo.query.filter_by(metodo_pago=venta.metodo_pago).first()
-    saldo.saldo -= venta.monto
+    saldo.saldo -= venta.monto  # revertimos saldo
 
     db.session.delete(venta)
     db.session.commit()
@@ -205,7 +204,7 @@ def editar_gasto(gasto_id):
 
     if form.validate_on_submit():
         saldo_old = Saldo.query.filter_by(metodo_pago=gasto.metodo_pago).first()
-        saldo_old.saldo += gasto.monto
+        saldo_old.saldo += gasto.monto  # revertimos saldo anterior
 
         gasto.fecha = form.fecha.data
         gasto.categoria = form.categoria.data
@@ -219,10 +218,10 @@ def editar_gasto(gasto_id):
         flash('Gasto actualizado correctamente.', 'info')
         return redirect(url_for('listado_gastos'))
 
-    form.fecha.data = gasto.fecha
+    form.fecha.data     = gasto.fecha
     form.categoria.data = gasto.categoria
-    form.monto.data = gasto.monto
-    form.metodo.data = gasto.metodo_pago
+    form.monto.data     = gasto.monto
+    form.metodo.data    = gasto.metodo_pago
 
     return render_template('expense_form.html', form=form, editar=True)
 
@@ -230,7 +229,7 @@ def editar_gasto(gasto_id):
 def eliminar_gasto(gasto_id):
     gasto = Gasto.query.get_or_404(gasto_id)
     saldo = Saldo.query.filter_by(metodo_pago=gasto.metodo_pago).first()
-    saldo.saldo += gasto.monto
+    saldo.saldo += gasto.monto  # revertimos saldo
 
     db.session.delete(gasto)
     db.session.commit()
@@ -238,4 +237,6 @@ def eliminar_gasto(gasto_id):
     return redirect(url_for('listado_gastos'))
 
 if __name__ == '__main__':
+    with app.app_context():
+        init_db()
     app.run(debug=True)
