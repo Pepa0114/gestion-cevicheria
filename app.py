@@ -3,28 +3,41 @@ from models import db, Saldo, Venta, Gasto, Transferencia
 from forms import VentaForm, GastoForm, TransferForm, InicialForm
 from datetime import datetime
 import os
+from flask_migrate import Migrate
+from sqlalchemy.pool import NullPool
 
 basedir = os.path.abspath(os.path.dirname(__file__))
-db_path = os.path.join(basedir, 'data', 'cevicheria.db')
-os.makedirs(os.path.join(basedir, 'data'), exist_ok=True)
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'cambia-esta-clave'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////data/cevicheria.db'
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-key-solo-para-desarrollo')
+
+# Configuración de la base de datos
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///' + os.path.join(basedir, 'instance', 'cevicheria.db'))
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
+# Configuración especial para PostgreSQL en Render
+if 'postgresql' in app.config['SQLALCHEMY_DATABASE_URI']:
+    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+        'poolclass': NullPool,  # Evita problemas de conexión en Render
+        'connect_args': {
+            'options': '-c timezone=utc'  # Configura zona horaria
+        }
+    }
+
 db.init_app(app)
+migrate = Migrate(app, db)  # Ahora correctamente después de inicializar app y db
 
 def init_db():
-    db.create_all()
-    for metodo in ['Efectivo', 'Yape', 'Izipay']:
-        if not Saldo.query.filter_by(metodo_pago=metodo).first():
-            db.session.add(Saldo(
-                metodo_pago=metodo,
-                monto_inicial=0.0,
-                saldo=0.0
-            ))
-    db.session.commit()
+    with app.app_context():
+        db.create_all()
+        for metodo in ['Efectivo', 'Yape', 'Izipay']:
+            if not Saldo.query.filter_by(metodo_pago=metodo).first():
+                db.session.add(Saldo(
+                    metodo_pago=metodo,
+                    monto_inicial=0.0,
+                    saldo=0.0
+                ))
+        db.session.commit()
 
 def obtener_saldos():
     return Saldo.query.all()
@@ -240,3 +253,4 @@ if __name__ == '__main__':
     with app.app_context():
         init_db()
     app.run(debug=True)
+    
