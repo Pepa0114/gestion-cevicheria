@@ -2,8 +2,9 @@ Flask==2.3.2
 Flask-SQLAlchemy==3.0.2
 Flask-WTF==1.1.1
 WTForms==3.0.1
-Werkzeug==2.3.7
-gunicorn
-Flask
-flask_sqlalchemy
-psycopg2-binary
+flask==2.3.2
+flask-sqlalchemy==3.0.3
+flask-migrate==4.0.4
+psycopg2-binary==2.9.6
+python-dotenv==1.0.0
+gunicorn==20.1.0
