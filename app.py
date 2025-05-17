@@ -6,9 +6,10 @@ import os
 from flask_migrate import Migrate
 from sqlalchemy.pool import NullPool
 
+app = Flask(__name__)
 basedir = os.path.abspath(os.path.dirname(__file__))
 
-app = Flask(__name__)
+
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-key-solo-para-desarrollo')
 
 # Configuración de la base de datos
